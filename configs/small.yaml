@@ -1,0 +1,23 @@
+# 小规模配置 (1×4090, 10小时内完成)
+synthesis:
+  seed_count: 100
+  evolution_rounds: 2
+  candidates_per_node: 2
+  beam_size: 2
+  max_tree_depth: 2
+  target_data_size: 1000
+  
+  quality_threshold: 6.0
+  diversity_threshold: 6.0
+  
+  synthesis_model: "Qwen/Qwen2.5-Coder-1.5B"
+  eval_model: "Qwen/Qwen2.5-Coder-1.5B"
+
+training:
+  model_name: "Qwen/Qwen2.5-Coder-1.5B"
+  batch_size: 2
+  gradient_accumulation_steps: 8
+  learning_rate: 1e-5
+  num_epochs: 1
+  max_length: 1024
+  warmup_ratio: 0.01

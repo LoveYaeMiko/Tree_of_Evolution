@@ -1,0 +1,23 @@
+# 标准规模配置
+synthesis:
+  seed_count: 5000
+  evolution_rounds: 3
+  candidates_per_node: 3
+  beam_size: 3
+  max_tree_depth: 3
+  target_data_size: 75000
+  
+  quality_threshold: 8.0
+  diversity_threshold: 7.0
+  
+  synthesis_model: "Qwen/Qwen2.5-Coder-7B"
+  eval_model: "Qwen/Qwen2.5-Coder-7B"
+
+training:
+  model_name: "Qwen/Qwen2.5-Coder-7B"
+  batch_size: 8
+  gradient_accumulation_steps: 8
+  learning_rate: 5e-6
+  num_epochs: 2
+  max_length: 4096
+  warmup_ratio: 0.01
