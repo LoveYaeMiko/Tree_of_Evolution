@@ -61,6 +61,8 @@ def main():
     evolution.save_synthesized_data(args.output)
     print(f"合成数据已保存到 {args.output}")
     
+    evolution.analyze_synthesized_data()
+    
     # 打印统计信息
     if synthesized_data:
         challenge_scores = [item['challenge_score'] for item in synthesized_data]

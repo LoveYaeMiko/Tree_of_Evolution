@@ -3,6 +3,7 @@ import json
 import time
 from tqdm import tqdm
 from typing import List, Dict, Any
+import numpy as np
 from dataclasses import dataclass
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from .quality_evaluation import QualityEvaluator
@@ -308,3 +309,32 @@ class TreeEvolution:
         """保存合成的数据"""
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(self.synthesized_data, f, ensure_ascii=False, indent=2)
+            
+    def analyze_synthesized_data(self):
+        """分析合成数据的质量"""
+        if not self.synthesized_data:
+            print("没有合成数据可供分析")
+            return
+        
+        challenge_scores = [item['challenge_score'] for item in self.synthesized_data]
+        diversity_scores = [item['diversity_score'] for item in self.synthesized_data]
+        quality_scores = [item['quality_score'] for item in self.synthesized_data]
+        
+        print("\n=== 数据合成质量分析 ===")
+        print(f"总指令数: {len(self.synthesized_data)}")
+        print(f"平均挑战性分数: {np.mean(challenge_scores):.2f} ± {np.std(challenge_scores):.2f}")
+        print(f"平均多样性分数: {np.mean(diversity_scores):.2f} ± {np.std(diversity_scores):.2f}")
+        print(f"平均质量分数: {np.mean(quality_scores):.2f} ± {np.std(quality_scores):.2f}")
+        
+        # 质量分布
+        quality_bins = {'优秀(>15)': 0, '良好(12-15)': 0, '一般(8-12)': 0, '较差(<8)': 0}
+        for score in quality_scores:
+            if score > 15: quality_bins['优秀(>15)'] += 1
+            elif score > 12: quality_bins['良好(12-15)'] += 1
+            elif score > 8: quality_bins['一般(8-12)'] += 1
+            else: quality_bins['较差(<8)'] += 1
+        
+        print("\n质量分布:")
+        for category, count in quality_bins.items():
+            percentage = (count / len(quality_scores)) * 100
+            print(f"  {category}: {count} ({percentage:.1f}%)")
