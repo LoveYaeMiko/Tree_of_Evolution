@@ -22,13 +22,13 @@ class DatasetDownloader:
             # 使用Hugging Face datasets库加载Stack数据集
             dataset = load_dataset("bigcode/the-stack", 
                                  data_dir="data/python", 
-                                 split=f"train[:{num_samples}]",
+                                 split="train",
                                  streaming=True)
             
             code_snippets = []
             progress = tqdm(total=num_samples, desc="提取代码片段")
             
-            for sample in dataset:
+            for i, sample in enumerate(dataset):
                 if len(code_snippets) >= num_samples:
                     break
                     
@@ -59,7 +59,7 @@ class DatasetDownloader:
         print("下载HumanEval数据集...")
         
         try:
-            dataset = load_dataset("openai/humaneval")
+            dataset = load_dataset("openai/openai_humaneval")
             
             problems = []
             for split in ['test']:
@@ -131,27 +131,39 @@ class DatasetDownloader:
                 'mbpp_plus': []
             }
             
-            # 处理HumanEval+
+            # 处理HumanEval+ - 使用安全的字段访问
             for problem in humaneval_plus['test']:
-                evalplus_data['humaneval_plus'].append({
-                    'task_id': problem['task_id'],
-                    'prompt': problem['prompt'],
-                    'canonical_solution': problem['canonical_solution'],
-                    'test': problem['test'],
-                    'base_test': problem['base_test'],
-                    'plus_test': problem['plus_test']
-                })
+                problem_data = {
+                    'task_id': problem.get('task_id', ''),
+                    'prompt': problem.get('prompt', ''),
+                    'canonical_solution': problem.get('canonical_solution', ''),
+                    'test': problem.get('test', ''),
+                }
+                
+                # 安全地访问可能不存在的字段
+                if 'base_test' in problem:
+                    problem_data['base_test'] = problem['base_test']
+                if 'plus_test' in problem:
+                    problem_data['plus_test'] = problem['plus_test']
+                    
+                evalplus_data['humaneval_plus'].append(problem_data)
             
-            # 处理MBPP+
+            # 处理MBPP+ - 使用安全的字段访问
             for problem in mbpp_plus['test']:
-                evalplus_data['mbpp_plus'].append({
-                    'task_id': problem['task_id'],
-                    'text': problem['text'],
-                    'code': problem['code'],
-                    'test_list': problem['test_list'],
-                    'base_test_list': problem['base_test_list'],
-                    'plus_test_list': problem['plus_test_list']
-                })
+                problem_data = {
+                    'task_id': problem.get('task_id', ''),
+                    'text': problem.get('text', ''),
+                    'code': problem.get('code', ''),
+                    'test_list': problem.get('test_list', []),
+                }
+                
+                # 安全地访问可能不存在的字段
+                if 'base_test_list' in problem:
+                    problem_data['base_test_list'] = problem['base_test_list']
+                if 'plus_test_list' in problem:
+                    problem_data['plus_test_list'] = problem['plus_test_list']
+                    
+                evalplus_data['mbpp_plus'].append(problem_data)
             
             # 保存EvalPlus数据
             output_file = os.path.join(self.data_dir, 'evalplus.json')
@@ -160,9 +172,10 @@ class DatasetDownloader:
             
             print(f"成功下载 EvalPlus: {len(evalplus_data['humaneval_plus'])} HumanEval+, {len(evalplus_data['mbpp_plus'])} MBPP+")
             return evalplus_data
-            
+        
         except Exception as e:
             print(f"下载EvalPlus失败: {e}")
+            # 返回一个空的结构，避免后续处理出错
             return {'humaneval_plus': [], 'mbpp_plus': []}
     
     def _generate_fallback_snippets(self, num_samples):
