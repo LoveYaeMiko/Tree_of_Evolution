@@ -114,20 +114,44 @@ class TreeOfEvolution:
     
     def generate_instruction(self, prompt):
         """使用模型生成指令"""
-        inputs = self.synthesis_tokenizer(prompt, return_tensors="pt", max_length=2048, truncation=True)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        try:
+            inputs = self.synthesis_tokenizer(prompt, return_tensors="pt", max_length=2048, truncation=True)
+            
+            # 修复：确保inputs正确传递到GPU
+            if hasattr(inputs, 'input_ids'):
+                input_ids = inputs.input_ids.to(self.device)
+                attention_mask = inputs.attention_mask.to(self.device) if hasattr(inputs, 'attention_mask') else None
+            else:
+                # 如果返回的是字典
+                input_ids = inputs['input_ids'].to(self.device)
+                attention_mask = inputs['attention_mask'].to(self.device) if 'attention_mask' in inputs else None
+            
+            with torch.no_grad():
+                if attention_mask is not None:
+                    outputs = self.synthesis_model.generate(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        max_new_tokens=512,
+                        temperature=1.0,
+                        do_sample=True,
+                        pad_token_id=self.synthesis_tokenizer.eos_token_id
+                    )
+                else:
+                    outputs = self.synthesis_model.generate(
+                        input_ids=input_ids,
+                        max_new_tokens=512,
+                        temperature=1.0,
+                        do_sample=True,
+                        pad_token_id=self.synthesis_tokenizer.eos_token_id
+                    )
+            
+            response = self.synthesis_tokenizer.decode(outputs[0], skip_special_tokens=True)
+            return self._extract_instruction(response)
         
-        with torch.no_grad():
-            outputs = self.synthesis_model.generate(
-                inputs.input_ids,
-                max_new_tokens=512,
-                temperature=1.0,
-                do_sample=True,
-                pad_token_id=self.synthesis_tokenizer.eos_token_id
-            )
-        
-        response = self.synthesis_tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return self._extract_instruction(response)
+        except Exception as e:
+            print(f"生成指令时出错: {e}")
+            # 返回一个默认指令作为后备
+            return f"编写一个Python函数来解决编程问题。"
 
     def _extract_instruction(self, response):
         """从模型响应中提取指令"""
