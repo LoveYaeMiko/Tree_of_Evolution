@@ -333,5 +333,5 @@ def main():
     print("数据合成完成！")
     print(f"生成指令数量: {len(synthesized_data)}")
 
-if name == "main":
+if __name__ == "main":
     main()
