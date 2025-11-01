@@ -16,8 +16,8 @@ class SmallScaleConfig:
     embedding_model: str = "thenlper/gte-large"
     
     # 训练
-    batch_size: int = 4
-    max_length: int = 2048
+    batch_size: int = 2
+    max_length: int = 1024
     learning_rate: float = 1e-5
     num_epochs: int = 1
     warmup_ratio: float = 0.1
