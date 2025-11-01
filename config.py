@@ -16,15 +16,15 @@ class SmallScaleConfig:
     embedding_model: str = "thenlper/gte-large"
     
     # 训练
-    batch_size: int = 2
-    max_length: int = 1024
+    batch_size: int = 4
+    max_length: int = 2048
     learning_rate: float = 1e-5
     num_epochs: int = 1
     warmup_ratio: float = 0.1
     
-    # 评估
+    # 评估 - 与论文一致
     eval_batch_size: int = 8
-    max_eval_samples: int = 100
+    max_eval_samples: int = 100  # 为了快速评估，可以设置为较小值
     
     # 路径
     data_dir: str = "./resources"
@@ -32,27 +32,27 @@ class SmallScaleConfig:
 
 @dataclass  
 class StandardScaleConfig:
-    """标准规模配置"""
+    """标准规模配置 - 与论文一致"""
     # 数据合成
-    num_seeds: int = 5000
+    num_seeds: int = 5000  # 与论文一致
     tree_depth: int = 3
     beam_width: int = 3  
     candidates_per_node: int = 3
     
-    # 模型
+    # 模型 - 与论文一致
     base_model: str = "Qwen/Qwen2.5-Coder-7B"
     embedding_model: str = "thenlper/gte-large"
     
-    # 训练
+    # 训练 - 与论文一致
     batch_size: int = 16
     max_length: int = 4096
     learning_rate: float = 5e-6  
     num_epochs: int = 2
     warmup_ratio: float = 0.01
     
-    # 评估
+    # 评估 - 与论文一致
     eval_batch_size: int = 16
-    max_eval_samples: int = -1  # 全部评估
+    max_eval_samples: int = -1  # 评估所有样本，与论文一致
     
     # 路径
     data_dir: str = "./resources"
