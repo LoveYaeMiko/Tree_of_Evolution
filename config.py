@@ -1,72 +1,115 @@
-import argparse
-import os
-import sys
+import torch
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
-def get_config():
-    parser = argparse.ArgumentParser(description="Tree-of-Evolution Configuration")
+@dataclass
+class DataConfig:
+    """数据配置"""
+    # 数据规模
+    scale: str = "small"  # "small" 或 "standard"
     
-    # 数据合成参数
-    parser.add_argument("--mode", type=str, default="small", choices=["small", "standard"], 
-                       help="运行模式: small(小规模) 或 standard(标准规模)")
-    parser.add_argument("--num_seeds", type=int, default=100, help="初始种子数量")
-    parser.add_argument("--evolution_rounds", type=int, default=2, help="进化轮数")
-    parser.add_argument("--paths_per_node", type=int, default=2, help="每个节点的进化路径数")
-    parser.add_argument("--beam_size", type=float, default=0.75, help="束搜索保留比例")
-    parser.add_argument("--diversity_threshold", type=float, default=6.0, help="多样性阈值")
+    # Stack v1 配置
+    stack_samples_small: int = 100  # 小规模种子数
+    stack_samples_standard: int = 5000  # 标准规模种子数
     
-    # 模型参数
-    parser.add_argument("--base_model", type=str, default="", help="基础模型路径（留空使用自动配置）")
-    parser.add_argument("--synthesis_model", type=str, default="", help="数据合成模型路径")
-    parser.add_argument("--embed_model", type=str, default="", help="嵌入模型路径")
+    # ToE 配置
+    evolution_rounds_small: int = 2  # 小规模演化轮数
+    evolution_rounds_standard: int = 3  # 标准规模演化轮数
+    paths_per_node_small: int = 2  # 小规模每节点路径数
+    paths_per_node_standard: int = 3  # 标准规模每节点路径数
+    beam_size_small: int = 1  # 小规模beam大小
+    beam_size_standard: int = 2  # 标准规模beam大小
     
+    # 数据收集
+    target_samples_small: int = 5000  # 小规模目标样本数
+    target_samples_standard: int = 75000  # 标准规模目标样本数
+    similarity_threshold: float = 6.0  # 相似度阈值
+
+@dataclass  
+class ModelConfig:
+    """模型配置"""
+    # 基础模型
+    base_model_small: str = "Qwen/Qwen2.5-Coder-1.5B"
+    base_model_standard: str = "Qwen/Qwen2.5-Coder-7B"
+    
+    # 合成模型
+    synthesis_model: str = "Qwen/Qwen2.5-7B-Instruct"
+    
+    # 嵌入模型
+    embedding_model: str = "thenlper/gte-large-en-v1.5"
+    
+    # 本地路径
+    local_base_path: str = "models"
+    local_data_path: str = "data"
+
+@dataclass
+class TrainingConfig:
+    """训练配置"""
     # 训练参数
-    parser.add_argument("--batch_size", type=int, default=32, help="训练批次大小")
-    parser.add_argument("--learning_rate", type=float, default=5e-6, help="学习率")
-    parser.add_argument("--num_epochs", type=int, default=2, help="训练轮数")
-    parser.add_argument("--max_length", type=int, default=2048, help="最大序列长度")
+    learning_rate: float = 5e-6
+    num_epochs: int = 2
+    batch_size_small: int = 32
+    batch_size_standard: int = 256
+    max_length: int = 4096
+    warmup_ratio: float = 0.01
     
-    # 系统参数
-    parser.add_argument("--download_models", action="store_true", help="是否下载模型")
-    parser.add_argument("--download_datasets", action="store_true", help="是否下载数据集")
-    parser.add_argument("--evaluate_model", action="store_true", help="是否评估模型")
-    parser.add_argument("--force_download", action="store_true", help="强制重新下载")
-    parser.add_argument("--skip_synthesis", action="store_true", help="跳过数据合成")
-    parser.add_argument("--skip_training", action="store_true", help="跳过模型训练")
-    
-    # 路径参数
-    parser.add_argument("--output_dir", type=str, default="./output", help="输出目录")
-    parser.add_argument("--data_dir", type=str, default="./data", help="数据目录")
-    
-    args = parser.parse_args()
-    
-    # 根据模式调整参数
-    if args.mode == "standard":
-        args.num_seeds = 500
-        args.evolution_rounds = 3
-        args.paths_per_node = 3
-        args.batch_size = 16
-        args.base_model = ""
-        args.learning_rate = 3e-6
-    
-    # 设置默认路径
-    if not args.base_model:
-        try:
-            from model_manager import ModelManager
-            manager = ModelManager(args)
-            model_config = manager.load_model_config()
-            if model_config:
-                args.base_model = model_config.get("base_model", "")
-                args.synthesis_model = model_config.get("synthesis_model", "")
-                args.embed_model = model_config.get("embed_model", "")
-            else:
-                print("警告: 未找到模型配置，请先运行 --download_models")
-        except ImportError:
-            print("警告: 无法导入 ModelManager")
-    
-    return args
+    # 硬件
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    mixed_precision: str = "bf16"
 
-if __name__ == "__main__":
-    config = get_config()
-    print("配置参数:")
-    for key, value in vars(config).items():
-        print(f"  {key}: {value}")
+@dataclass
+class ToEConfig:
+    """ToE框架配置"""
+    # 质量评估
+    challenge_weight: float = 1.0
+    diversity_weight: float = 1.0
+    
+    # 演化控制
+    max_depth: int = 3
+    min_challenge_score: float = 5.0
+    
+    # 评估参数
+    challenge_temperature: float = 0.0
+    diversity_top_k: int = 1
+
+class ConfigManager:
+    """配置管理器"""
+    
+    def __init__(self, scale: str = "small"):
+        self.scale = scale
+        self.data_config = DataConfig()
+        self.model_config = ModelConfig() 
+        self.training_config = TrainingConfig()
+        self.toe_config = ToEConfig()
+        
+    def get_data_config(self) -> Dict[str, Any]:
+        """获取数据配置"""
+        if self.scale == "small":
+            return {
+                "stack_samples": self.data_config.stack_samples_small,
+                "evolution_rounds": self.data_config.evolution_rounds_small,
+                "paths_per_node": self.data_config.paths_per_node_small,
+                "beam_size": self.data_config.beam_size_small,
+                "target_samples": self.data_config.target_samples_small
+            }
+        else:
+            return {
+                "stack_samples": self.data_config.stack_samples_standard,
+                "evolution_rounds": self.data_config.evolution_rounds_standard, 
+                "paths_per_node": self.data_config.paths_per_node_standard,
+                "beam_size": self.data_config.beam_size_standard,
+                "target_samples": self.data_config.target_samples_standard
+            }
+    
+    def get_training_config(self) -> Dict[str, Any]:
+        """获取训练配置"""
+        if self.scale == "small":
+            return {
+                "batch_size": self.training_config.batch_size_small,
+                "base_model": self.model_config.base_model_small
+            }
+        else:
+            return {
+                "batch_size": self.training_config.batch_size_standard, 
+                "base_model": self.model_config.base_model_standard
+            }
